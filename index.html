@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PolyCode Studio - Python + Java + C++ + HTML</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --panel-soft: #1f2937;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --accent: #22d3ee;
+      --accent-2: #818cf8;
+      --success: #34d399;
+      --warning: #f59e0b;
+      --danger: #fb7185;
+      --border: #334155;
+      --font: Inter, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: var(--font); }
+
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: auto auto 1fr auto;
+      gap: 14px;
+      padding: 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .hero {
+      background: linear-gradient(135deg, rgba(34,211,238,0.18), rgba(129,140,248,0.2));
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px 18px;
+    }
+    .hero h1 { margin: 0 0 6px; font-size: 1.35rem; letter-spacing: 0.2px; }
+    .hero p { margin: 0; color: var(--muted); line-height: 1.45; }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+    .tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .tab-btn, .action-btn {
+      border: 1px solid var(--border);
+      background: var(--panel);
+      color: var(--text);
+      padding: 8px 12px;
+      border-radius: 9px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: 0.2s ease;
+    }
+    .tab-btn:hover, .action-btn:hover { transform: translateY(-1px); border-color: var(--accent); }
+    .tab-btn.active { background: linear-gradient(135deg, rgba(34,211,238,0.22), rgba(129,140,248,0.2)); border-color: var(--accent); }
+
+    .action-group { margin-left: auto; display: flex; gap: 8px; }
+    .run { background: rgba(52, 211, 153, 0.14); border-color: rgba(52, 211, 153, 0.8); }
+    .reset { background: rgba(251, 113, 133, 0.12); border-color: rgba(251, 113, 133, 0.7); }
+
+    .workbench {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      min-height: 62vh;
+    }
+
+    .panel {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: var(--panel);
+      overflow: hidden;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      min-height: 0;
+    }
+    .panel-header {
+      padding: 10px 14px;
+      background: var(--panel-soft);
+      border-bottom: 1px solid var(--border);
+      font-weight: 600;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+    .badge {
+      font-size: 0.78rem;
+      border: 1px solid var(--border);
+      padding: 3px 8px;
+      border-radius: 999px;
+      color: var(--accent);
+    }
+
+    #editor {
+      width: 100%;
+      height: 100%;
+      resize: none;
+      border: none;
+      outline: none;
+      background: #0b1220;
+      color: #dbeafe;
+      padding: 14px;
+      font: 0.95rem/1.55 var(--mono);
+      tab-size: 2;
+    }
+
+    #output {
+      margin: 0;
+      padding: 14px;
+      white-space: pre-wrap;
+      overflow: auto;
+      font: 0.92rem/1.5 var(--mono);
+      color: #c7d2fe;
+    }
+
+    #preview {
+      width: 100%;
+      height: 100%;
+      border: none;
+      background: white;
+      display: none;
+    }
+
+    .footer {
+      color: var(--muted);
+      font-size: 0.86rem;
+      text-align: center;
+      padding-bottom: 5px;
+    }
+
+    @media (max-width: 920px) {
+      .workbench { grid-template-columns: 1fr; min-height: auto; }
+      .action-group { margin-left: 0; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="hero">
+      <h1>PolyCode Studio (Single-File Web App)</h1>
+      <p>
+        Edit and explore <strong>Python</strong>, <strong>Java</strong>, <strong>C++</strong>, and <strong>HTML</strong> in one place.
+        Python runs in-browser via <code>pyodide</code>, HTML renders live preview, and Java/C++ show compile-ready terminal output guidance.
+      </p>
+    </section>
+
+    <section class="toolbar">
+      <div class="tabs" id="tabs"></div>
+      <div class="action-group">
+        <button class="action-btn run" id="runBtn">▶ Run / Render</button>
+        <button class="action-btn reset" id="resetBtn">↺ Reset Sample</button>
+      </div>
+    </section>
+
+    <section class="workbench">
+      <article class="panel">
+        <header class="panel-header">
+          <span id="editorTitle">Editor</span>
+          <span class="badge" id="engineBadge">Engine</span>
+        </header>
+        <textarea id="editor" spellcheck="false"></textarea>
+      </article>
+
+      <article class="panel">
+        <header class="panel-header">
+          <span id="outputTitle">Output</span>
+          <span class="badge" id="statusBadge">Ready</span>
+        </header>
+        <pre id="output"></pre>
+        <iframe id="preview" title="HTML Preview"></iframe>
+      </article>
+    </section>
+
+    <footer class="footer">
+      Single-file build • Dark UI • Responsive layout • No backend required
+    </footer>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js"></script>
+  <script>
+    const samples = {
+      python: `# Python sample (runs in browser via pyodide)
+def greet(name):
+    return f"Hello, {name}!"
+
+for n in ["Developer", "Student", "Builder"]:
+    print(greet(n))
+`,
+      java: `// Java sample (display-only in browser)
+public class Main {
+  public static void main(String[] args) {
+    System.out.println("Java code loaded in PolyCode Studio");
+    int sum = 0;
+    for (int i = 1; i <= 5; i++) sum += i;
+    System.out.println("Sum 1..5 = " + sum);
+  }
+}
+`,
+      cpp: `// C++ sample (display-only in browser)
+#include <iostream>
+using namespace std;
+
+int main() {
+  int sum = 0;
+  for (int i = 1; i <= 5; ++i) sum += i;
+  cout << "C++ code loaded in PolyCode Studio\\n";
+  cout << "Sum 1..5 = " << sum << endl;
+  return 0;
+}
+`,
+      html: `<!doctype html>
+<html>
+<head>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f3f4f6; padding: 24px; }
+    .card { background: white; border-radius: 10px; padding: 20px; box-shadow: 0 8px 24px rgba(0,0,0,0.1); }
+    h2 { margin-top: 0; color: #0f172a; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>Hello from HTML Preview</h2>
+    <p>You can render full HTML/CSS/JS here.</p>
+  </div>
+</body>
+</html>
+`
+    };
+
+    const state = { language: 'python', pyodide: null, loadingPyodide: false };
+
+    const tabs = [
+      { id: 'python', label: 'Python', engine: 'Pyodide (in-browser)' },
+      { id: 'java', label: 'Java', engine: 'Guidance / template' },
+      { id: 'cpp', label: 'C++', engine: 'Guidance / template' },
+      { id: 'html', label: 'HTML', engine: 'Live iframe preview' },
+    ];
+
+    const tabsRoot = document.getElementById('tabs');
+    const editor = document.getElementById('editor');
+    const output = document.getElementById('output');
+    const preview = document.getElementById('preview');
+    const runBtn = document.getElementById('runBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const editorTitle = document.getElementById('editorTitle');
+    const engineBadge = document.getElementById('engineBadge');
+    const outputTitle = document.getElementById('outputTitle');
+    const statusBadge = document.getElementById('statusBadge');
+
+    function setStatus(text, tone = 'ready') {
+      statusBadge.textContent = text;
+      if (tone === 'ok') statusBadge.style.color = 'var(--success)';
+      else if (tone === 'warn') statusBadge.style.color = 'var(--warning)';
+      else if (tone === 'err') statusBadge.style.color = 'var(--danger)';
+      else statusBadge.style.color = 'var(--accent)';
+    }
+
+    function renderTabs() {
+      tabsRoot.innerHTML = '';
+      tabs.forEach(tab => {
+        const btn = document.createElement('button');
+        btn.className = 'tab-btn' + (state.language === tab.id ? ' active' : '');
+        btn.textContent = tab.label;
+        btn.onclick = () => switchLanguage(tab.id);
+        tabsRoot.appendChild(btn);
+      });
+    }
+
+    function switchLanguage(lang) {
+      state.language = lang;
+      renderTabs();
+      editor.value = samples[lang];
+      editorTitle.textContent = `${lang.toUpperCase()} Editor`;
+      engineBadge.textContent = tabs.find(t => t.id === lang).engine;
+      outputTitle.textContent = lang === 'html' ? 'Rendered Output' : 'Console Output';
+      output.textContent = lang === 'html'
+        ? 'Click "Run / Render" to update the HTML preview.'
+        : `Ready to run ${lang.toUpperCase()} sample.`;
+      preview.style.display = 'none';
+      output.style.display = 'block';
+      setStatus('Ready', 'ready');
+    }
+
+    async function ensurePyodide() {
+      if (state.pyodide || state.loadingPyodide) return;
+      state.loadingPyodide = true;
+      setStatus('Loading Python runtime...', 'warn');
+      try {
+        state.pyodide = await loadPyodide();
+        setStatus('Python runtime ready', 'ok');
+      } catch (e) {
+        setStatus('Python runtime failed', 'err');
+        output.textContent = `Could not load pyodide runtime:\n${e.message}`;
+      } finally {
+        state.loadingPyodide = false;
+      }
+    }
+
+    async function runCurrent() {
+      const lang = state.language;
+      const code = editor.value;
+
+      if (lang === 'html') {
+        preview.style.display = 'block';
+        output.style.display = 'none';
+        preview.srcdoc = code;
+        setStatus('HTML rendered', 'ok');
+        return;
+      }
+
+      output.style.display = 'block';
+      preview.style.display = 'none';
+
+      if (lang === 'python') {
+        await ensurePyodide();
+        if (!state.pyodide) return;
+
+        setStatus('Running Python...', 'warn');
+        const printed = [];
+        state.pyodide.setStdout({ batched: (msg) => printed.push(msg) });
+
+        try {
+          await state.pyodide.runPythonAsync(code);
+          output.textContent = printed.join('\n') || '[Program finished with no printed output]';
+          setStatus('Python run complete', 'ok');
+        } catch (e) {
+          output.textContent = e.toString();
+          setStatus('Python runtime error', 'err');
+        }
+        return;
+      }
+
+      if (lang === 'java') {
+        output.textContent = [
+          'Java source is loaded and editable in this single-file web app.',
+          '',
+          'In-browser JVM compilation is not bundled by default (to keep this file lightweight).',
+          'Use this code directly in your Java project as Main.java and run:',
+          '  javac Main.java',
+          '  java Main',
+          '',
+          'Tip: You can integrate a remote compiler API if needed.'
+        ].join('\n');
+        setStatus('Java guidance ready', 'warn');
+        return;
+      }
+
+      if (lang === 'cpp') {
+        output.textContent = [
+          'C++ source is loaded and editable in this single-file web app.',
+          '',
+          'Native C++ compilation is not bundled in-browser by default.',
+          'Use this code in main.cpp and run:',
+          '  g++ main.cpp -std=c++17 -O2 -o app',
+          '  ./app',
+          '',
+          'Tip: You can integrate WebAssembly-based compilers for advanced use.'
+        ].join('\n');
+        setStatus('C++ guidance ready', 'warn');
+      }
+    }
+
+    runBtn.addEventListener('click', runCurrent);
+    resetBtn.addEventListener('click', () => {
+      editor.value = samples[state.language];
+      setStatus('Sample reset', 'ok');
+    });
+
+    switchLanguage('python');
+  </script>
+</body>
+</html>
